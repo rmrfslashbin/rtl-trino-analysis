@@ -3,6 +3,7 @@ package fetch
 import (
 	"fmt"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/trinodb/trino-go-client/trino"
 )
@@ -68,6 +69,7 @@ func New(opts ...func(*Config)) (*Config, error) {
 	if db, err := sqlx.Connect("trino", config.dsn); err != nil {
 		return nil, err
 	} else {
+		spew.Dump(config.dsn)
 		config.DB = db
 	}
 

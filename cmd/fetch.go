@@ -24,12 +24,6 @@ import (
 
 // fetchCmd represents the fetch command
 var (
-	hostname string
-	outfile  string
-	dsn      string
-	geodb    string
-	geo      *geoip.Config
-
 	fetchCmd = &cobra.Command{
 		Use:   "fetch",
 		Short: "Fetches data from Trino and writes it to a gob file for furthe processing",
@@ -55,10 +49,10 @@ var (
 func init() {
 	rootCmd.AddCommand(fetchCmd)
 
-	fetchCmd.PersistentFlags().StringVarP(&hostname, "hostname", "n", "", "hostname")
-	fetchCmd.PersistentFlags().StringVarP(&outfile, "outfile", "o", "data/output.gob", "gob data file")
-	fetchCmd.PersistentFlags().StringVarP(&dsn, "dsn", "d", "http://user@localhost:9080?catalog=hive&schema=cfrtl", "Trino DSN")
-	fetchCmd.PersistentFlags().StringVarP(&geodb, "geodb", "g", "./data/geoip/GeoLite2-City.mmdb", "GeoIP database file")
+	fetchCmd.Flags().StringVarP(&hostname, "hostname", "n", "", "hostname")
+	fetchCmd.Flags().StringVarP(&outfile, "outfile", "o", "data/output.gob", "gob data file")
+	//fetchCmd.Flags().StringVarP(&dsn, "dsn", "d", "http://user@localhost:9080?catalog=hive&schema=cfrtl", "Trino DSN")
+	fetchCmd.Flags().StringVarP(&geodb, "geodb", "g", "./data/geoip/GeoLite2-City.mmdb", "GeoIP database file")
 	fetchCmd.MarkPersistentFlagRequired("hostname")
 
 	var err error
@@ -157,6 +151,7 @@ func processRecord(entry *fetch.Entry) (*rtl.Record, error) {
 
 	return &rtl.Record{
 		Timestamp:                timestamp,
+		ClientIPAddr:             entry.ClientIP,
 		Status:                   entry.Status,
 		Bytes:                    entry.Bytes,
 		Method:                   entry.Method,

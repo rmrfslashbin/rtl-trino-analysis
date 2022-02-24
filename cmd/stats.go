@@ -17,17 +17,9 @@ import (
 
 // statsCmd represents the stats command
 var (
-	datafile string
-
 	statsCmd = &cobra.Command{
 		Use:   "stats",
-		Short: "A brief description of your command",
-		Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+		Short: "Do stats on stored data",
 		Run: func(cmd *cobra.Command, args []string) {
 			// Catch errors
 			var err error
@@ -50,12 +42,12 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(statsCmd)
 
-	statsCmd.PersistentFlags().StringVarP(&datafile, "datafile", "f", "data/output.gob", "gob data file")
+	statsCmd.Flags().StringVarP(&datafile, "datafile", "f", "data/output.gob", "gob data file")
 }
 
 func getStats() error {
 	// Resolve the output file path
-	fqpn, err := filepath.Abs(outfile)
+	fqpn, err := filepath.Abs(datafile)
 	if err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ import (
 // Record represents a properly formatted and typed Trino entry
 type Record struct {
 	Timestamp                time.Time         `json:"timestamp"`
+	ClientIPAddr             string            `json:"client_ip_addr"`
 	Status                   int               `json:"status"`
 	Bytes                    int64             `json:"bytes"`
 	Method                   string            `json:"method"`
@@ -37,6 +38,6 @@ type Record struct {
 	Year                     int               `json:"year"`
 	Month                    int               `json:"month"`
 	Day                      int               `json:"day"`
-	ClientIP                 *geoip.GeoIPData  `json:"geoip_data"`
-	UserAgent                *useragent.Record `json:"useragent_data"`
+	ClientIP                 *geoip.GeoIPData  `json:"geoip_data" gorm:"embedded"`
+	UserAgent                *useragent.Record `json:"useragent_data" gorm:"embedded"`
 }
