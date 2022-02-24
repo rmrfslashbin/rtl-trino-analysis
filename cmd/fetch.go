@@ -15,15 +15,53 @@ import (
 	"time"
 
 	"github.com/rmrfslashbin/rtl-trino-analysis/pkg/fetch"
+	"github.com/rmrfslashbin/rtl-trino-analysis/pkg/geoip"
+	"github.com/rmrfslashbin/rtl-trino-analysis/pkg/useragent"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
+
+// Record represents a properly formatted and typed Trino entry
+type Record struct {
+	Timestamp                time.Time         `json:"timestamp"`
+	Status                   int               `json:"status"`
+	Bytes                    int64             `json:"bytes"`
+	Method                   string            `json:"method"`
+	Protocol                 string            `json:"protocol"`
+	Host                     string            `json:"host"`
+	UriStem                  string            `json:"uri_stem"`
+	EdgeLocation             string            `json:"edge_location"`
+	EdgeRequestID            string            `json:"edge_request_id"`
+	HostHeader               string            `json:"host_header"`
+	TimeTaken                float64           `json:"time_taken"`
+	ProtoVersion             string            `json:"proto_version"`
+	IPVersion                string            `json:"ip_version"`
+	Referer                  string            `json:"referer"`
+	Cookie                   string            `json:"cookie"`
+	UriQuery                 string            `json:"uri_query"`
+	EdgeResponseResultType   string            `json:"edge_response_result_type"`
+	SslProtocol              string            `json:"ssl_protocol"`
+	SslCipher                string            `json:"ssl_cipher"`
+	EdgeResultType           string            `json:"edge_result_type"`
+	ContentType              string            `json:"content_type"`
+	ContentLength            int64             `json:"content_length"`
+	EdgeDetailedResultType   string            `json:"edge_detailed_result_type"`
+	Country                  string            `json:"country"`
+	CacheBehaviorPathPattern string            `json:"cache_behavior_path_pattern"`
+	Year                     int               `json:"year"`
+	Month                    int               `json:"month"`
+	Day                      int               `json:"day"`
+	ClientIP                 *geoip.GeoIPData  `json:"geoip_data"`
+	UserAgent                *useragent.Record `json:"useragent_data"`
+}
 
 // fetchCmd represents the fetch command
 var (
 	hostname string
 	outfile  string
 	dsn      string
+	geodb    string
+	geo      *geoip.Config
 
 	fetchCmd = &cobra.Command{
 		Use:   "fetch",
@@ -51,9 +89,18 @@ func init() {
 	rootCmd.AddCommand(fetchCmd)
 
 	fetchCmd.PersistentFlags().StringVarP(&hostname, "hostname", "n", "", "hostname")
-	fetchCmd.PersistentFlags().StringVarP(&outfile, "outfile", "o", "output.gob", "gob data file")
+	fetchCmd.PersistentFlags().StringVarP(&outfile, "outfile", "o", "data/output.gob", "gob data file")
 	fetchCmd.PersistentFlags().StringVarP(&dsn, "dsn", "d", "http://user@localhost:9080?catalog=hive&schema=cfrtl", "Trino DSN")
+	fetchCmd.PersistentFlags().StringVarP(&geodb, "geodb", "g", "./data/geoip/GeoLite2-City.mmdb", "GeoIP database file")
 	fetchCmd.MarkPersistentFlagRequired("hostname")
+
+	var err error
+	geo, err = geoip.New(geoip.SetGeoDB(geodb))
+	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"error": err,
+		}).Fatal("error")
+	}
 }
 
 func runFetch() error {
@@ -65,7 +112,7 @@ func runFetch() error {
 	defer trino.Close()
 
 	// Query to execute
-	query := "SELECT * FROM hive.cfrtl.rtl WHERE year='2022' AND month='2' AND HOST LIKE ? LIMIT 10"
+	query := "SELECT * FROM hive.cfrtl.rtl WHERE year='2022' AND month='2' AND HOST LIKE ?"
 
 	// Execute the query
 	rows, err := trino.DB.Queryx(query, fmt.Sprintf("%%%s", hostname))
@@ -75,7 +122,7 @@ func runFetch() error {
 	defer rows.Close()
 
 	// Slice to hold the results
-	var records []fetch.Record
+	var records []Record
 
 	// Iterate over the results
 	for rows.Next() {
@@ -87,83 +134,113 @@ func runFetch() error {
 			return err
 		}
 
-		// Convert the timestamp string to a time.Time
-		epoch, err := strconv.ParseInt(strings.Replace(entry.Timestamp, ".", "", 1), 10, 64)
-		if err != nil {
-			return err
-		}
-		timestamp := time.UnixMilli(epoch)
-
-		// Convert the year, month, and day strings to ints
-		year, err := strconv.Atoi(entry.Year)
-		if err != nil {
-			return err
-		}
-		month, err := strconv.Atoi(entry.Month)
-		if err != nil {
-			return err
-		}
-		day, err := strconv.Atoi(entry.Day)
+		record, err := processRecord(&entry)
 		if err != nil {
 			return err
 		}
 
 		// Build a properly typed reccord
-		records = append(records, fetch.Record{
-			Timestamp:                timestamp,
-			ClientIP:                 net.ParseIP(entry.ClientIP),
-			Status:                   entry.Status,
-			Bytes:                    entry.Bytes,
-			Method:                   entry.Method,
-			Protocol:                 entry.Protocol,
-			Host:                     entry.Host,
-			UriStem:                  entry.UriStem,
-			EdgeLocation:             entry.EdgeLocation,
-			EdgeRequestID:            entry.EdgeRequestID,
-			HostHeader:               entry.HostHeader,
-			TimeTaken:                entry.TimeTaken,
-			ProtoVersion:             entry.ProtoVersion,
-			IPVersion:                entry.IPVersion,
-			UserAgent:                entry.UserAgent,
-			Referer:                  entry.Referer,
-			Cookie:                   entry.Cookie,
-			UriQuery:                 entry.UriQuery,
-			EdgeResponseResultType:   entry.EdgeResponseResultType,
-			SslProtocol:              entry.SslProtocol,
-			SslCipher:                entry.SslCipher,
-			EdgeResultType:           entry.EdgeResultType,
-			ContentType:              entry.ContentType,
-			ContentLength:            entry.ContentLength,
-			EdgeDetailedResultType:   entry.EdgeDetailedResultType,
-			Country:                  entry.Country,
-			CacheBehaviorPathPattern: entry.CacheBehaviorPathPattern,
-			Year:                     year,
-			Month:                    month,
-			Day:                      day,
-		})
+		records = append(records, *record)
 	}
 
-	// Resolve the output file path
-	fqpn, err := filepath.Abs(outfile)
-	if err != nil {
+	// Write the records to a file
+	if fqpn, err := writeData(records, outfile); err != nil {
 		return err
+	} else {
+		// Print the number of records and output filename
+		fmt.Printf("wrote %d records to %s\n", len(records), *fqpn)
+	}
+
+	geo.Close()
+
+	return nil
+}
+
+func processRecord(entry *fetch.Entry) (*Record, error) {
+	// Convert the timestamp string to a time.Time
+	epoch, err := strconv.ParseInt(strings.Replace(entry.Timestamp, ".", "", 1), 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	timestamp := time.UnixMilli(epoch)
+
+	// Convert the year, month, and day strings to ints
+	year, err := strconv.Atoi(entry.Year)
+	if err != nil {
+		return nil, err
+	}
+	month, err := strconv.Atoi(entry.Month)
+	if err != nil {
+		return nil, err
+	}
+	day, err := strconv.Atoi(entry.Day)
+	if err != nil {
+		return nil, err
+	}
+
+	geodata, err := geo.Lookup(net.ParseIP(entry.ClientIP))
+	if err != nil {
+		return nil, err
+	}
+
+	uaparser, err := useragent.Parse(entry.UserAgent)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Record{
+		Timestamp:                timestamp,
+		Status:                   entry.Status,
+		Bytes:                    entry.Bytes,
+		Method:                   entry.Method,
+		Protocol:                 entry.Protocol,
+		Host:                     entry.Host,
+		UriStem:                  entry.UriStem,
+		EdgeLocation:             entry.EdgeLocation,
+		EdgeRequestID:            entry.EdgeRequestID,
+		HostHeader:               entry.HostHeader,
+		TimeTaken:                entry.TimeTaken,
+		ProtoVersion:             entry.ProtoVersion,
+		IPVersion:                entry.IPVersion,
+		Referer:                  entry.Referer,
+		Cookie:                   entry.Cookie,
+		UriQuery:                 entry.UriQuery,
+		EdgeResponseResultType:   entry.EdgeResponseResultType,
+		SslProtocol:              entry.SslProtocol,
+		SslCipher:                entry.SslCipher,
+		EdgeResultType:           entry.EdgeResultType,
+		ContentType:              entry.ContentType,
+		ContentLength:            entry.ContentLength,
+		EdgeDetailedResultType:   entry.EdgeDetailedResultType,
+		Country:                  entry.Country,
+		CacheBehaviorPathPattern: entry.CacheBehaviorPathPattern,
+		Year:                     year,
+		Month:                    month,
+		Day:                      day,
+		ClientIP:                 geodata,
+		UserAgent:                uaparser,
+	}, nil
+}
+
+func writeData(records []Record, datafile string) (*string, error) {
+	// Resolve the output file path
+	fqpn, err := filepath.Abs(datafile)
+	if err != nil {
+		return nil, err
 	}
 
 	// Create the output file
 	f, err := os.Create(fqpn)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer f.Close()
 
 	// Encode the records to the file
 	enc := gob.NewEncoder(f)
 	if err := enc.Encode(records); err != nil {
-		return err
+		return nil, err
 	}
 
-	// Print the number of records and output filename
-	fmt.Printf("wrote %d records to %s\n", len(records), fqpn)
-
-	return nil
+	return &fqpn, nil
 }
