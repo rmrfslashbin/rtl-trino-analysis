@@ -144,7 +144,7 @@ func runFetch() error {
 	}
 
 	// Write the records to a file
-	if fqpn, err := writeData(records, outfile); err != nil {
+	if fqpn, err := writeData(&records); err != nil {
 		return err
 	} else {
 		// Print the number of records and output filename
@@ -222,9 +222,9 @@ func processRecord(entry *fetch.Entry) (*Record, error) {
 	}, nil
 }
 
-func writeData(records []Record, datafile string) (*string, error) {
+func writeData(records *[]Record) (*string, error) {
 	// Resolve the output file path
-	fqpn, err := filepath.Abs(datafile)
+	fqpn, err := filepath.Abs(outfile)
 	if err != nil {
 		return nil, err
 	}
