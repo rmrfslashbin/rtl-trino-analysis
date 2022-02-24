@@ -16,44 +16,11 @@ import (
 
 	"github.com/rmrfslashbin/rtl-trino-analysis/pkg/fetch"
 	"github.com/rmrfslashbin/rtl-trino-analysis/pkg/geoip"
+	"github.com/rmrfslashbin/rtl-trino-analysis/pkg/rtl"
 	"github.com/rmrfslashbin/rtl-trino-analysis/pkg/useragent"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
-
-// Record represents a properly formatted and typed Trino entry
-type Record struct {
-	Timestamp                time.Time         `json:"timestamp"`
-	Status                   int               `json:"status"`
-	Bytes                    int64             `json:"bytes"`
-	Method                   string            `json:"method"`
-	Protocol                 string            `json:"protocol"`
-	Host                     string            `json:"host"`
-	UriStem                  string            `json:"uri_stem"`
-	EdgeLocation             string            `json:"edge_location"`
-	EdgeRequestID            string            `json:"edge_request_id"`
-	HostHeader               string            `json:"host_header"`
-	TimeTaken                float64           `json:"time_taken"`
-	ProtoVersion             string            `json:"proto_version"`
-	IPVersion                string            `json:"ip_version"`
-	Referer                  string            `json:"referer"`
-	Cookie                   string            `json:"cookie"`
-	UriQuery                 string            `json:"uri_query"`
-	EdgeResponseResultType   string            `json:"edge_response_result_type"`
-	SslProtocol              string            `json:"ssl_protocol"`
-	SslCipher                string            `json:"ssl_cipher"`
-	EdgeResultType           string            `json:"edge_result_type"`
-	ContentType              string            `json:"content_type"`
-	ContentLength            int64             `json:"content_length"`
-	EdgeDetailedResultType   string            `json:"edge_detailed_result_type"`
-	Country                  string            `json:"country"`
-	CacheBehaviorPathPattern string            `json:"cache_behavior_path_pattern"`
-	Year                     int               `json:"year"`
-	Month                    int               `json:"month"`
-	Day                      int               `json:"day"`
-	ClientIP                 *geoip.GeoIPData  `json:"geoip_data"`
-	UserAgent                *useragent.Record `json:"useragent_data"`
-}
 
 // fetchCmd represents the fetch command
 var (
@@ -122,7 +89,7 @@ func runFetch() error {
 	defer rows.Close()
 
 	// Slice to hold the results
-	var records []Record
+	var records []rtl.Record
 
 	// Iterate over the results
 	for rows.Next() {
@@ -156,7 +123,7 @@ func runFetch() error {
 	return nil
 }
 
-func processRecord(entry *fetch.Entry) (*Record, error) {
+func processRecord(entry *fetch.Entry) (*rtl.Record, error) {
 	// Convert the timestamp string to a time.Time
 	epoch, err := strconv.ParseInt(strings.Replace(entry.Timestamp, ".", "", 1), 10, 64)
 	if err != nil {
@@ -188,7 +155,7 @@ func processRecord(entry *fetch.Entry) (*Record, error) {
 		return nil, err
 	}
 
-	return &Record{
+	return &rtl.Record{
 		Timestamp:                timestamp,
 		Status:                   entry.Status,
 		Bytes:                    entry.Bytes,
@@ -222,7 +189,7 @@ func processRecord(entry *fetch.Entry) (*Record, error) {
 	}, nil
 }
 
-func writeData(records *[]Record) (*string, error) {
+func writeData(records *[]rtl.Record) (*string, error) {
 	// Resolve the output file path
 	fqpn, err := filepath.Abs(outfile)
 	if err != nil {
