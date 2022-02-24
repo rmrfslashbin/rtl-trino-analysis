@@ -4,7 +4,8 @@ import "github.com/rmrfslashbin/rtl-trino-analysis/pkg/geoip"
 
 var (
 	datafile string
-	dsn      string
+	trinoDSN string
+	mysqlDSN string
 	hostname string
 	outfile  string
 	geodb    string

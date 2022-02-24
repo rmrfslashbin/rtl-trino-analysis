@@ -44,11 +44,11 @@ func init() {
 	rootCmd.AddCommand(pushCmd)
 
 	pushCmd.Flags().StringVarP(&datafile, "datafile", "f", "data/output.gob", "gob data file")
-	pushCmd.Flags().StringVarP(&dsn, "dsn", "d", "rtl:rtl@tcp(127.0.0.1:3306)/rtl", "MySQL DSN")
+	pushCmd.Flags().StringVarP(&mysqlDSN, "dsn", "d", "rtl:rtl@tcp(127.0.0.1:3306)/rtl", "MySQL DSN")
 }
 
 func pushDataToMySQL() error {
-	db, err := mysql.New(mysql.SetDSN(dsn))
+	db, err := mysql.New(mysql.SetDSN(mysqlDSN))
 	if err != nil {
 		return err
 	}

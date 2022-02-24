@@ -51,7 +51,7 @@ func init() {
 
 	fetchCmd.Flags().StringVarP(&hostname, "hostname", "n", "", "hostname")
 	fetchCmd.Flags().StringVarP(&outfile, "outfile", "o", "data/output.gob", "gob data file")
-	//fetchCmd.Flags().StringVarP(&dsn, "dsn", "d", "http://user@localhost:9080?catalog=hive&schema=cfrtl", "Trino DSN")
+	fetchCmd.Flags().StringVarP(&trinoDSN, "dsn", "d", "http://user@localhost:9080?catalog=hive&schema=cfrtl", "Trino DSN")
 	fetchCmd.Flags().StringVarP(&geodb, "geodb", "g", "./data/geoip/GeoLite2-City.mmdb", "GeoIP database file")
 	fetchCmd.MarkPersistentFlagRequired("hostname")
 
@@ -66,7 +66,7 @@ func init() {
 
 func runFetch() error {
 	// Get a new Trino database connection
-	trino, err := fetch.New(fetch.SetDSN(dsn))
+	trino, err := fetch.New(fetch.SetDSN(trinoDSN))
 	if err != nil {
 		return err
 	}
