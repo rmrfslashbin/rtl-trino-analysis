@@ -118,10 +118,15 @@ func fetchData() error {
 	}
 	defer trino.Close()
 
+	log.Debug("Connected to Trino")
+
 	// Query to execute
 	query := "SELECT * FROM hive.cfrtl.rtl WHERE year='2022' AND month='7'"
 	// "SELECT * FROM hive.cfrtl.rtl WHERE year='2022' AND month='2' AND HOST LIKE ?"
 
+	log.WithFields(logrus.Fields{
+		"query": query,
+	}).Debug("Executing query")
 	// Execute the query
 	rows, err := trino.DB.Queryx(query)
 	//rows, err := trino.DB.Queryx(query, fmt.Sprintf("%%%s", hostname))
@@ -129,11 +134,13 @@ func fetchData() error {
 		return err
 	}
 	defer rows.Close()
+	log.Debug("Query executed. Processing results...")
 
 	// Slice to hold the results
 	var records []rtl.Record
 
 	// Iterate over the results
+	count := 0
 	for rows.Next() {
 		// fetch.Entry is a struct that is compatible with the data returned from Trino
 		var entry fetch.Entry
@@ -150,14 +157,26 @@ func fetchData() error {
 
 		// Build a properly typed reccord
 		records = append(records, *record)
+		count++
+		if count%1000 == 0 {
+			log.WithFields(logrus.Fields{
+				"count": count,
+			}).Debug("Processed record")
+		}
 	}
+	log.WithFields(logrus.Fields{
+		"count": count,
+	}).Debug("Processed all records")
 
 	// Write the records to a file
 	if fqpn, err := writeData(datafile, &records); err != nil {
 		return err
 	} else {
 		// Print the number of records and output filename
-		fmt.Printf("wrote %d records to %s\n", len(records), *fqpn)
+		log.WithFields(logrus.Fields{
+			"count": len(records),
+			"file":  fqpn,
+		}).Info("Wrote data")
 	}
 
 	geo.Close()
