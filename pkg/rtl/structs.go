@@ -38,6 +38,6 @@ type Record struct {
 	Year                     int               `json:"year"`
 	Month                    int               `json:"month"`
 	Day                      int               `json:"day"`
-	ClientIP                 *geoip.GeoIPData  `json:"geoip_data" gorm:"embedded"`
-	UserAgent                *useragent.Record `json:"useragent_data" gorm:"embedded"`
+	ClientIP                 *geoip.GeoIPData  `json:"geoip_data"`     //gorm:"embedded"
+	UserAgent                *useragent.Record `json:"useragent_data"` //gorm:"embedded"
 }

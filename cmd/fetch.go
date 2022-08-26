@@ -23,6 +23,7 @@ package cmd
 
 import (
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -121,7 +122,7 @@ func fetchData() error {
 	log.Debug("Connected to Trino")
 
 	// Query to execute
-	query := "SELECT * FROM hive.cfrtl.rtl WHERE year='2022' AND month='7'"
+	query := "SELECT * FROM hive.cfrtl.rtl WHERE year='2022' AND month='7' LIMIT 10"
 	// "SELECT * FROM hive.cfrtl.rtl WHERE year='2022' AND month='2' AND HOST LIKE ?"
 
 	log.WithFields(logrus.Fields{
@@ -169,13 +170,13 @@ func fetchData() error {
 	}).Debug("Processed all records")
 
 	// Write the records to a file
-	if fqpn, err := writeData(datafile, &records); err != nil {
+	if fqpn, err := writeJSON(datafile, &records); err != nil {
 		return err
 	} else {
 		// Print the number of records and output filename
 		log.WithFields(logrus.Fields{
 			"count": len(records),
-			"file":  fqpn,
+			"file":  *fqpn,
 		}).Info("Wrote data")
 	}
 
@@ -251,9 +252,17 @@ func processRecord(geo *geoip.Config, entry *fetch.Entry) (*rtl.Record, error) {
 	}, nil
 }
 
-func writeData(datafile string, records *[]rtl.Record) (*string, error) {
+func writeGOB(datafile string, records *[]rtl.Record) (*string, error) {
 	// Resolve the output file path
 	fqpn, err := filepath.Abs(datafile)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := os.MkdirAll(filepath.Dir(fqpn), 0755); err != nil {
+		return nil, err
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -268,6 +277,36 @@ func writeData(datafile string, records *[]rtl.Record) (*string, error) {
 	// Encode the records to the file
 	enc := gob.NewEncoder(f)
 	if err := enc.Encode(records); err != nil {
+		return nil, err
+	}
+
+	return &fqpn, nil
+}
+
+func writeJSON(datafile string, records *[]rtl.Record) (*string, error) {
+	// Resolve the output file path
+	fqpn, err := filepath.Abs(datafile)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := os.MkdirAll(filepath.Dir(fqpn), 0755); err != nil {
+		return nil, err
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the output file
+	f, err := os.Create(fqpn)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	file, _ := json.MarshalIndent(records, "", " ")
+	if _, err := f.Write(file); err != nil {
 		return nil, err
 	}
 
