@@ -1,3 +1,4 @@
+# Exclude data
 data/
 
 # Binaries for programs and plugins
@@ -15,3 +16,10 @@ data/
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+# vscode
+.vscode/
+
+# backup stuff
+*.bak/
+*.bak

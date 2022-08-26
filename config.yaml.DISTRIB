@@ -1,0 +1,4 @@
+loglevel: debug
+geoipdb: /opt/homebrew/var/GeoIP/GeoLite2-City.mmdb
+trinodsn: http://user@localhost:9080?catalog=hive&schema=cfrtl
+datafile: data/data.gob
