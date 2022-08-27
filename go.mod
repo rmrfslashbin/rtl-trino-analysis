@@ -3,13 +3,14 @@ module github.com/rmrfslashbin/rtl-trino-analysis
 go 1.19
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/jmoiron/sqlx v1.3.5
+	github.com/mssola/user_agent v0.5.3
 	github.com/oschwald/maxminddb-golang v1.10.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
 	github.com/trinodb/trino-go-client v0.302.0
-	github.com/ua-parser/uap-go v0.0.0-20211112212520-00c877edfe0f
 	gorm.io/driver/mysql v1.3.6
 	gorm.io/gorm v1.23.8
 )
